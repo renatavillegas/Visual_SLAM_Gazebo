@@ -25,7 +25,7 @@ colcon build
 source install/setup.sh
 
 --To test: 
-In a terminal:
+
 1) launch gazebo: 
 ros2 launch article world.launch.py
 2) run keyboard control 
