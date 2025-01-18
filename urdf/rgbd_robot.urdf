@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
-<robot name="simple_robot">
+<robot name="rgbd_robot">
   <!--skid_steer_drive_controller-->
   <gazebo>
-    <plugin filename="libgazebo_ros_diff_drive.so" name="skid_steer_drive_controller">
+    <plugin filename="libgazebo_ros_diff_drive.so" name="skid_steer_drive_controller_la">
       <ros>
         <namespace>/gazebo_model</namespace>
         <argument>/cmd_vel:=mr_cme_vel</argument>
@@ -26,51 +26,73 @@
       <publish_wheel_tf>true</publish_wheel_tf>
       <odom_source>WORLD</odom_source>
     </plugin>
-  </gazebo>
-  <!-- camera -->
-  <gazebo reference="camera">
-    <sensor name="camera_sensor" type="camera">
-      <update_rate>30.0</update_rate>
-      <visualize>true</visualize>
-      <always_on>1</always_on>
-      <camera name="camera">
-        <horizontal_fov>1.02974</horizontal_fov>
-        <image>
-          <width>540</width>
-          <height>540</height>
-          <format>R8G8B8</format>
-        </image>
-        <clip>
-          <near>0.01</near>
-          <far>500</far>
-        </clip>
-          <noise>
-            <type>gaussian</type>
-            <!-- Noise is sampled independently per pixel on each frame.
-                  That pixel's noise value is added to each of its color
-                  channels, which at that point lie in the range [0,1]. -->
-            <mean>0.0</mean>
-            <stddev>0.007</stddev>
-          </noise>        
-        <distortion>
-          <k1>0.0</k1>
-          <k2>0.0</k2>
-          <k3>0.0</k3>
-          <p1>0.0</p1>
-          <p2>0.0</p2>
-        </distortion>
-      </camera>
-      <plugin filename="libgazebo_ros_camera.so" name="camera_controller">
-        <ros>
-          <namespace>gazebo_model</namespace>
-          <argument>camera/image_raw:=camera</argument>
-          <argument>camera/camera_info:=camera/image/camera_info</argument>
-        </ros>
-        <camera_name>camera</camera_name>
-        <frame_name>camera</frame_name>
-      </plugin>
-    </sensor>
-  </gazebo>
+  </gazebo>  
+<!-- Stereo camera plugin -->
+<gazebo reference="stereo_camera_link">
+  <!-- Sensor RGB -->
+  <sensor name="camera_sensor" type="camera">
+    <always_on>true</always_on>
+    <update_rate>30.0</update_rate>
+    <visualize>true</visualize>
+    <camera>
+      <horizontal_fov>1.047</horizontal_fov>
+      <image>
+        <width>540</width>
+        <height>540</height>
+        <format>R8G8B8</format>
+      </image>
+      <clip>
+        <near>0.1</near>
+        <far>500</far>
+      </clip>
+    </camera>
+    <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+      <ros>
+        <namespace>/camera/rgb</namespace>
+        <topic_name>image_raw</topic_name>
+      </ros>
+    </plugin>
+  </sensor>
+
+  <!-- Sensor de profundidade -->
+  <sensor name="depth_camera_sensor" type="depth">
+    <always_on>true</always_on>
+    <update_rate>30.0</update_rate>
+    <visualize>true</visualize>
+    <camera>
+      <horizontal_fov>1.047</horizontal_fov>
+      <image>
+        <width>540</width>
+        <height>540</height>
+        <format>R8G8B8</format>
+      </image>
+      <clip>
+        <near>0.1</near>
+        <far>500</far>
+      </clip>
+    </camera>
+    <plugin name="zed2i" filename="libgazebo_ros_camera.so">
+      <ros>
+        <namespace>/zed2i/zed_node</namespace>
+        <remapping>rgbd/image_raw:=rgb/image_rect_color</remapping>
+        <remapping>rgbd/depth/image_raw:=depth/depth_registered</remapping>
+        <remapping>camera/rgb/camera_sensor/image_raw:=rgb/image_raw</remapping>
+      </ros>
+      <camera_name>rgbd</camera_name>
+      <frame_name>rgbd_link_optical</frame_name>
+      <hack_baseline>0.07</hack_baseline>
+      <min_depth>0.05</min_depth>
+      <max_depth>10.0</max_depth>
+    </plugin>
+    <camera_info>
+      <k1>0.0</k1>
+      <k2>0.0</k2>
+      <p1>0.0</p1>
+      <p2>0.0</p2>
+      <k3>0.0</k3>
+    </camera_info>
+  </sensor>
+</gazebo>
 
   <!-- hokuyo -->
   <gazebo reference="hokuyo">
@@ -103,7 +125,7 @@
         </noise>
       </ray>
       <update_rate>30</update_rate>
-      <plugin filename="libgazebo_ros_ray_sensor.so" name="imu_link">
+      <plugin filename="libgazebo_ros_ray_sensor.so" name="hokuyo_plugin">
         <ros>
           <namespace>/gazebo_model</namespace>
           <argument>~/out:=scan</argument>
@@ -120,24 +142,21 @@
       <update_rate>1000</update_rate>
       <visualize>true</visualize>
       <topic>__default_topic__</topic>
-      <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
+      <plugin filename="libgazebo_ros_imu_sensor.so" name="imu">
         <topicName>trunk_imu</topicName>
         <bodyName>robot_footprint</bodyName>
-        <updateRateHZ>200.0</updateRateHZ>
-        <gaussianNoise>0.0</gaussianNoise>
+        <updateRateHZ>1000.0</updateRateHZ>
+        <gaussianNoise>0.1</gaussianNoise>
         <xyzOffset>0 0 0</xyzOffset>
         <rpyOffset>0 0 0</rpyOffset>
         <frameName>imu_link</frameName>
-      </plugin>
-        <noise>
-          <type>gaussian</type>
-          <mean>0.0</mean>
-          <stddev>0.01</stddev>
-        </noise>      
-          <pose>0 0 0 0 0 0</pose>
+      </plugin>  
+    <origin rpy="0 0 0" xyz="0 0 0"/>
     </sensor>
   </gazebo>
-  <link name="robot_footprint"/>
+  <link name="robot_footprint">
+    <pose>0 0 0 0 0 0</pose>
+    </link>
   <joint name="robot_footprint_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0"/>
     <parent link="robot_footprint"/>
@@ -239,25 +258,6 @@
       </geometry>
     </collision>
   </link>
-  <link name="camera">
-    <inertial>
-      <mass value="0.1"/>
-      <origin rpy=" 0 0 0" xyz="0.05 0.05 0.05"/>
-      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
-    </inertial>
-    <visual name="camera_visual">
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <box size="0.05 0.05 0.05"/>
-      </geometry>
-    </visual>
-    <collision name="camera_colision">
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <box size="0.05 0.05 0.05"/>
-      </geometry>
-    </collision>
-  </link>
   <link name="hokuyo">
     <inertial>
       <mass value="1e-5"/>
@@ -296,6 +296,28 @@
       </geometry>
     </collision>
   </link>
+  <!-- Stereo Camera -->
+  <link name="stereo_camera_link">
+    <inertial>
+      <mass value="0.001"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>    
+    <!-- Visual representation for the stereo camera -->
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 1.57"/>
+      <geometry>
+        <box size="0.1 0.02 0.02"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.1 .02 .02"/>
+      </geometry>
+    </collision>    
+  </link>
+  <!-- Joints connecting components to the root link -->
   <joint name="front_left_wheel_joint" type="continuous">
     <origin rpy="0 0 0" xyz="0.12 0.15 0"/>
     <child link="front_left_wheel"/>
@@ -328,34 +350,34 @@
     <limit effort="10000" velocity="1000"/>
     <dynamics damping="1.0" friction="1.0"/>
   </joint>
-  <joint name="camera_joint" type="fixed">
-    <origin rpy="0 0 0" xyz="0.2 0 0"/>
-    <child link="camera"/>
-    <parent link="chassis"/>
-    <axis rpy="0 0 0" xyz="0 1 0"/>
-  </joint>
   <joint name="hokuyo_joint" type="fixed">
-    <origin rpy="0 0 0" xyz="0.15 0 0.1"/>
+    <origin rpy="0 0 0" xyz="0.15 0 0.07"/>
     <child link="hokuyo"/>
     <parent link="chassis"/>
     <axis rpy="0 0 0" xyz="0 1 0"/>
   </joint>
   <joint name="imu_joint" type="fixed">
-    <origin rpy="0 0 0" xyz="0.15 0 0.05"/>
+    <origin rpy="0 0 0" xyz="0.15 0 0.12"/>
     <parent link="chassis"/>
     <child link="imu_link"/>
     <axis rpy="0 0 0" xyz="0 1 0"/>
   </joint>
+  <joint name="robot_footprint_to_stereo_camera_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0.15 0 0.15"/>
+    <parent link="chassis"/>
+    <child link="stereo_camera_link"/>
+    <axis rpy="0 0 0" xyz="0 0 0"/>
+  </joint>  
   <gazebo reference="chassis">
     <material>Gazebo/Blue</material>
   </gazebo>
-  <gazebo reference="camera">
+  <gazebo reference="stereo_camera_link">
     <material>Gazebo/Red</material>
   </gazebo>
   <gazebo reference="hokuyo">
     <material>Gazebo/Black</material>
   </gazebo>
   <gazebo reference="imu">
-    <material>Gazebo/Green</material>
+    <material>Gazebo/Yellow</material>
   </gazebo>
 </robot>
